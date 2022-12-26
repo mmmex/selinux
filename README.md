@@ -187,4 +187,34 @@ semodule -i nginx.pp
 -rw-r--r--.  1 root root  257 Dec 26 22:28 nginx.te
 ```
 
-После выполнения audit2allow создаст два файла в домашней папке root: nginx.pp и nginx.te, установим 
+После выполнения `audit2allow` создаст два файла в домашней папке `root`: `nginx.pp` и `nginx.te`
+
+Установка модуля: `semodule -i nginx.pp`
+
+```bash
+[root@selinux ~]# semodule -i nginx.pp
+[root@selinux ~]# systemctl start nginx
+[root@selinux ~]# systemctl status nginx
+● nginx.service - The nginx HTTP and reverse proxy server
+   Loaded: loaded (/usr/lib/systemd/system/nginx.service; disabled; vendor preset: disabled)
+   Active: active (running) since Mon 2022-12-26 22:37:34 UTC; 3s ago
+  Process: 22128 ExecStart=/usr/sbin/nginx (code=exited, status=0/SUCCESS)
+  Process: 22125 ExecStartPre=/usr/sbin/nginx -t (code=exited, status=0/SUCCESS)
+  Process: 22124 ExecStartPre=/usr/bin/rm -f /run/nginx.pid (code=exited, status=0/SUCCESS)
+ Main PID: 22130 (nginx)
+   CGroup: /system.slice/nginx.service
+           ├─22130 nginx: master process /usr/sbin/nginx
+           └─22132 nginx: worker process
+
+Dec 26 22:37:34 selinux systemd[1]: Starting The nginx HTTP and reverse proxy server...
+Dec 26 22:37:34 selinux nginx[22125]: nginx: the configuration file /etc/nginx/nginx.conf syntax is ok
+Dec 26 22:37:34 selinux nginx[22125]: nginx: configuration file /etc/nginx/nginx.conf test is successful
+Dec 26 22:37:34 selinux systemd[1]: Started The nginx HTTP and reverse proxy server.
+```
+
+Для удаления модуля потребуется команда: `semodule -r nginx`
+
+```bash
+[root@selinux ~]# semodule -r nginx
+libsemanage.semanage_direct_remove_key: Removing last nginx module (no other nginx module exists at another priority).
+```
