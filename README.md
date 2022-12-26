@@ -18,7 +18,7 @@
    * исправленный стенд или демонстрация работоспособной системы скриншотами и описанием.
 ```
 
-### Запуск nginx на нестандартном порту 3-мя разными способами
+## Запуск nginx на нестандартном порту 3-мя разными способами
 
 Итак, имеется готовый [Vagrantfile](Vagrantfile). Запускаем ВМ: `vagrant up`.
 
@@ -55,7 +55,7 @@ nginx: configuration file /etc/nginx/nginx.conf test is successful
 Enforcing
 ```
 
-Вывод: в конфигурации **не найдены** синтаксические ошибки. Служба `SELinux` работает в режиме `Enforcing`, который блокирует запрещенную активность.
+Вывод: в конфигурации **не найдены** синтаксические ошибки, служба `SELinux` работает в режиме `Enforcing`, которая блокирует запрещенную активность.
 
 #### Способ 1: Разрешим в SELinux работу nginx на порту TCP 4881 с помощью переключателей setsebool
 
@@ -187,7 +187,11 @@ semodule -i nginx.pp
 -rw-r--r--.  1 root root  257 Dec 26 22:28 nginx.te
 ```
 
-После выполнения `audit2allow` создаст два файла в домашней папке `root`: `nginx.pp` и `nginx.te`
+После выполнения `audit2allow` создаст два файла в текущей папке (root): `nginx.pp` и `nginx.te`
+
+* nginx.pp - готовый скомпилированный модуль, готовый к установке;
+
+* nginx.te - исходный код модуля;
 
 Установка модуля: `semodule -i nginx.pp`
 
@@ -218,3 +222,6 @@ Dec 26 22:37:34 selinux systemd[1]: Started The nginx HTTP and reverse proxy ser
 [root@selinux ~]# semodule -r nginx
 libsemanage.semanage_direct_remove_key: Removing last nginx module (no other nginx module exists at another priority).
 ```
+---
+
+## 
