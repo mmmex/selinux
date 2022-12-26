@@ -63,7 +63,7 @@ Enforcing
 
 Нам известен `PID` процесса `nginx` (`2830`), который вызвал ошибку и это действие было зафиксировано в логе сервиса `audit`, выполним команду: `ausearch -p 2830 | audit2why`:
 
-![Screenshot_selinux1](https://raw.githubusercontent.com/mmmex/selinux/master/screenshot_selinux_1.png)
+![Screenshot_selinux1](https://raw.githubusercontent.com/mmmex/selinux/master/screenshots/screenshot_selinux_1.png)
 
 ```shell
 [root@selinux ~]# ausearch -p 2830 | audit2why
@@ -98,7 +98,7 @@ Dec 26 21:50:39 selinux systemd[1]: Started The nginx HTTP and reverse proxy ser
 
 Открываем браузер и переходим по адресу: `http://127.0.0.1:4881`:
 
-![Screenshot_selinux2](https://raw.githubusercontent.com/mmmex/selinux/master/screenshot_selinux2.png)
+![Screenshot_selinux2](https://raw.githubusercontent.com/mmmex/selinux/master/screenshots/screenshot_selinux2.png)
 
 Возвращаем обратно, отключаем `nis_enabled`: `setsebool -P nis_enabled off`
 
