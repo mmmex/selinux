@@ -18,3 +18,61 @@
    * исправленный стенд или демонстрация работоспособной системы скриншотами и описанием.
 ```
 
+### Запуск nginx на нестандартном порту 3-мя разными способами
+
+Итак, имеется готовый [Vagrantfile](Vagrantfile). Запускаем ВМ: `vagrant up`.
+
+[Лог](vagrant_up.log) запуска ВМ (вывод сохранен утилитой script). Выполним вход: `vagrant ssh`, выполним вход `sudo -i`.
+
+Проверим состояние сервиса `nginx`: `systemctl status nginx`
+
+```bash
+[vagrant@selinux ~]$ sudo -i
+[root@selinux ~]# systemctl status nginx.service 
+● nginx.service - The nginx HTTP and reverse proxy server
+   Loaded: loaded (/usr/lib/systemd/system/nginx.service; disabled; vendor preset: disabled)
+   Active: failed (Result: exit-code) since Mon 2022-12-26 17:29:50 UTC; 28min ago
+  Process: 2830 ExecStartPre=/usr/sbin/nginx -t (code=exited, status=1/FAILURE)
+  Process: 2829 ExecStartPre=/usr/bin/rm -f /run/nginx.pid (code=exited, status=0/SUCCESS)
+
+Dec 26 17:29:50 selinux systemd[1]: Starting The nginx HTTP and reverse proxy server...
+Dec 26 17:29:50 selinux nginx[2830]: nginx: the configuration file /etc/nginx/nginx.conf syntax is ok
+Dec 26 17:29:50 selinux nginx[2830]: nginx: [emerg] bind() to [::]:4881 failed (13: Permission denied)
+Dec 26 17:29:50 selinux nginx[2830]: nginx: configuration file /etc/nginx/nginx.conf test failed
+Dec 26 17:29:50 selinux systemd[1]: nginx.service: control process exited, code=exited status=1
+Dec 26 17:29:50 selinux systemd[1]: Failed to start The nginx HTTP and reverse proxy server.
+Dec 26 17:29:50 selinux systemd[1]: Unit nginx.service entered failed state.
+Dec 26 17:29:50 selinux systemd[1]: nginx.service failed.
+```
+
+Согласно информации в логе, конфигурация сервиса `nginx` вызвала чрезвычайное событие (функция `bind()` не смогла получить доступ к порту `4881`). Данная ошибка возникает из-за того, что `SELinux` блокирует запуск сервиса `nginx` на нестандартном порту. Выполним проверку конфигурации `nginx` и режим работы `SELinux`:
+
+```bash
+[root@selinux ~]# nginx -t
+nginx: the configuration file /etc/nginx/nginx.conf syntax is ok
+nginx: configuration file /etc/nginx/nginx.conf test is successful
+[root@selinux ~]# getenforce 
+Enforcing
+```
+
+Вывод: в конфигурации **не найдены** синтаксические ошибки. Служба `SELinux` работает в режиме `Enforcing`, который блокирует запрещенную активность.
+
+#### Разрешим в SELinux работу nginx на порту TCP 4881 с помощью переключателей setsebool
+
+Для начала установим дополнительную утилиту `audit2why`, которая находится в пакете `policycoreutils-python`: `yum install policycoreutils-python -y`
+
+Нам известен `PID` процесса `nginx` (`2830`), который вызвал ошибку и это действие было зафиксировано в логе сервиса `audit`, выполним команду: `ausearch -p 2830 | audit2why`:
+
+```bash
+[root@selinux ~]# ausearch -p 2830 | audit2why
+type=AVC msg=audit(1672075789.957:814): avc:  denied  { name_bind } for  pid=2830 comm="nginx" src=4881 scontext=system_u:system_r:httpd_t:s0 tcontext=system_u:object_r:unreserved_port_t:s0 tclass=tcp_socket permissive=0
+
+        Was caused by:
+        The boolean nis_enabled was set incorrectly. 
+        Description:
+        Allow nis to enabled
+
+        Allow access by executing:
+        # setsebool -P nis_enabled 1
+```
+
