@@ -63,7 +63,7 @@ Enforcing
 
 Нам известен `PID` процесса `nginx` (`2830`), который вызвал ошибку и это действие было зафиксировано в логе сервиса `audit`, выполним команду: `ausearch -p 2830 | audit2why`:
 
-![Screenshot_selinux1](https://raw.githubusercontent.com/mmmex/selinux/master/screenshots/screenshot_selinux_1.png)
+![Screenshot_selinux1](https://raw.githubusercontent.com/mmmex/selinux/master/screenshots/screenshot_selinux1.png)
 
 ```shell
 [root@selinux ~]# ausearch -p 2830 | audit2why
