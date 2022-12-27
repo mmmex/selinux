@@ -55,9 +55,87 @@ nginx: configuration file /etc/nginx/nginx.conf test is successful
 Enforcing
 ```
 
-Вывод: в конфигурации **не найдены** синтаксические ошибки, служба `SELinux` работает в режиме `Enforcing`, которая блокирует запрещенную активность.
+Также, можно воспользоваться инструментом `sealert`, он даст больше информации об ошибке и предложит несколько вариантов решений, которые будут рассмотрены в данной документации.
 
-#### Способ 1: Разрешим в SELinux работу nginx на порту TCP 4881 с помощью переключателей setsebool
+##### sealert
+
+`sealert` — это компонент пользовательского интерфейса (либо GUI, либо командная строка) для системы `setroubleshoot`. `setroubleshoot` используется для диагностики отказов `SELinux` и пытается предоставить удобные объяснения отказа `SELinux` (например, `AVC`) и рекомендации о том, как можно настроить систему, чтобы предотвратить отказ в будущем. В стандартной конфигурации `setroubleshoot` состоит из двух компонентов: `setroubleshootd` и `sealert`. Двумя наиболее полезными параметрами командной строки являются `-l` для «поиска» идентификатора оповещения и `-a` для «анализа» файла журнала. Когда `setroubleshootd` генерирует новое оповещение, он присваивает ему локальный идентификатор и записывает его в виде сообщения системного журнала. Затем можно использовать параметр поиска `-l` для извлечения предупреждения из базы данных предупреждений `setroubleshootd` и записи его в стандартный вывод. Это наиболее полезно, когда `setroubleshootd` запускается в `headless` системе без средства оповещения рабочего стола с графическим интерфейсом. Параметр `-a` (analysis) эквивалентен команде «Scan Logfile» в браузере. Файл журнала сканируется на наличие сообщений аудита, выполняется анализ, генерируются предупреждения, а затем записывается в стандартный вывод.
+
+`setroubleshootd` — это системный демон, который запускается с привилегиями `root` и прослушивает события аудита, исходящие от ядра, связанные с `SELinux`. Демон аудита должен быть запущен. Демон аудита отправляет сообщение `dbus` демону `setroubleshootd`, когда система получает отказ `SELinux AVC`. Затем демон `setroubleshootd` запускает серию подключаемых модулей анализа, которые проверяют данные аудита, относящиеся к `AVC`. Он записывает результаты анализа и сообщает всем клиентам, которые присоединились к демону `setroubleshootd`, о появлении нового предупреждения.
+
+Выполним установку `setroubleshootd`: `yum install setroubleshoot-server -y`
+
+Далее выполним команду `sealert -a /var/log/audit/audit.log` чтобы получить анализ лога `audit`:
+
+```shell
+[root@selinux ~]# sealert -a /var/log/audit/audit.log 
+100% done
+found 1 alerts in /var/log/audit/audit.log
+--------------------------------------------------------------------------------
+
+SELinux запрещает /usr/sbin/nginx доступ name_bind к tcp_socket port 4881.
+
+*****  Модуль bind_ports предлагает (точность 92.2)  *************************
+
+Если вы хотите разрешить /usr/sbin/nginx для привязки к сетевому порту $PORT_ЧИСЛО
+То you need to modify the port type.
+Сделать
+# semanage port -a -t PORT_TYPE -p tcp 4881
+    где PORT_TYPE может принимать значения: http_cache_port_t, http_port_t, jboss_management_port_t, jboss_messaging_port_t, ntop_port_t, puppet_port_t.
+
+*****  Модуль catchall_boolean предлагает (точность 7.83)  *******************
+
+Если хотите allow nis to enabled
+То вы должны сообщить SELinux об этом, включив переключатель «nis_enabled».
+
+Сделать
+setsebool -P nis_enabled 1
+
+*****  Модуль catchall предлагает (точность 1.41)  ***************************
+
+Если вы считаете, что nginx должно быть разрешено name_bind доступ к port 4881 tcp_socket по умолчанию.
+То рекомендуется создать отчет об ошибке.
+Чтобы разрешить доступ, можно создать локальный модуль политики.
+Сделать
+allow this access for now by executing:
+# ausearch -c 'nginx' --raw | audit2allow -M my-nginx
+# semodule -i my-nginx.pp
+
+
+Дополнительные сведения:
+Исходный контекст             system_u:system_r:httpd_t:s0
+Целевой контекст              system_u:object_r:unreserved_port_t:s0
+Целевые объекты               port 4881 [ tcp_socket ]
+Источник                      nginx
+Путь к источнику              /usr/sbin/nginx
+Порт                          4881
+Узел                          <Unknown>
+Исходные пакеты RPM           nginx-1.20.1-10.el7.x86_64
+Целевые пакеты RPM            
+Пакет регламента              selinux-policy-3.13.1-268.el7_9.2.noarch
+SELinux активен               True
+Тип регламента                targeted
+Режим                         Enforcing
+Имя узла                      selinux
+Платформа                     Linux selinux 3.10.0-1127.el7.x86_64 #1 SMP Tue
+                              Mar 31 23:36:51 UTC 2020 x86_64 x86_64
+Счетчик уведомлений           4
+Впервые обнаружено            2022-12-26 17:29:49 UTC
+В последний раз               2022-12-27 13:05:40 UTC
+Локальный ID                  d6d21836-87c9-4cf8-8a26-d1b467138315
+
+Построчный вывод сообщений аудита
+type=AVC msg=audit(1672146340.337:1091): avc:  denied  { name_bind } for  pid=25267 comm="nginx" src=4881 scontext=system_u:system_r:httpd_t:s0 tcontext=system_u:object_r:unreserved_port_t:s0 tclass=tcp_socket permissive=0
+
+
+type=SYSCALL msg=audit(1672146340.337:1091): arch=x86_64 syscall=bind success=no exit=EACCES a0=6 a1=556db7c3e858 a2=10 a3=7fff77a9d400 items=0 ppid=1 pid=25267 auid=4294967295 uid=0 gid=0 euid=0 suid=0 fsuid=0 egid=0 sgid=0 fsgid=0 tty=(none) ses=4294967295 comm=nginx exe=/usr/sbin/nginx subj=system_u:system_r:httpd_t:s0 key=(null)
+
+Hash: nginx,httpd_t,unreserved_port_t,tcp_socket,name_bind
+```
+
+Вывод: в конфигурации **не найдены** синтаксические ошибки, служба `SELinux` работает в режиме `Enforcing`, которая блокирует запрещенную активность. Инструмент `sealert` предлагает 3 способа решения проблемы.
+
+#### Способ 1: Разрешим в SELinux работу nginx на порту TCP 4881 с помощью переключателей setsebool (Модуль catchall_boolean предлагает (точность 7.83))
 
 ##### setsebool
 
@@ -110,7 +188,7 @@ Dec 26 21:50:39 selinux systemd[1]: Started The nginx HTTP and reverse proxy ser
 
 Возвращаем обратно, отключаем `nis_enabled`: `setsebool -P nis_enabled off`
 
-#### Способ 2: Разрешим в SELinux работу nginx на порту TCP 4881 с помощью добавления нестандартного порта в тип http_port_t
+#### Способ 2: Разрешим в SELinux работу nginx на порту TCP 4881 с помощью добавления нестандартного порта в тип http_port_t (Модуль bind_ports предлагает (точность 92.2))
 
 ##### semanage
 
@@ -127,7 +205,7 @@ pegasus_http_port_t            tcp      5988
 pegasus_https_port_t           tcp      5989
 ```
 
-Добавим порт в тип `http_port_t`: `semanage port -a -t http_port_t -p tcp 4881`
+Добавим порт в тип `http_port_t`: `semanage port -a -t http_port_t -p tcp 4881` и выполним запуск сервиса `nginx`.
 
 ```bash
 [root@selinux ~]# semanage port -a -t http_port_t -p tcp 4881
@@ -159,7 +237,7 @@ Dec 26 22:16:10 selinux systemd[1]: Started The nginx HTTP and reverse proxy ser
 
 Удаляем нестандартный порт из типа http_port_t: `semanage port -d -t http_port_t -p tcp 4881`
 
-#### Способ 3: Разрешим в SELinux работу nginx на порту TCP 4881 с помощью формирования и установки модуля SELinux
+#### Способ 3: Разрешим в SELinux работу nginx на порту TCP 4881 с помощью формирования и установки модуля SELinux (Модуль catchall предлагает (точность 1.41))
 
 ##### audit2allow
 
@@ -189,7 +267,7 @@ Dec 26 22:25:16 selinux systemd[1]: Unit nginx.service entered failed state.
 Dec 26 22:25:16 selinux systemd[1]: nginx.service failed.
 ```
 
-Соберем модуль `SELinux` при помощи утилиты `audit2allow`:
+Сборка модуля `SELinux` осуществляется при помощи утилиты `audit2allow`:
 
 ```bash
 [root@selinux ~]# ausearch -p 22083 | audit2allow -M nginx
