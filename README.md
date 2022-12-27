@@ -20,11 +20,15 @@
 
 ## Запуск nginx на нестандартном порту 3-мя разными способами
 
-Итак, для демонстрации имеется готовый [Vagrantfile](Vagrantfile). Запускаем ВМ: `vagrant up`.
+Итак, для демонстрации имеется готовый [Vagrantfile](Vagrantfile). 
 
-[Лог](vagrant_up.log) запуска ВМ (вывод сохранен утилитой script). Выполним вход: `vagrant ssh`, выполним вход `sudo -i`.
+* Запускаем ВМ: `vagrant up`.
 
-Проверим состояние сервиса `nginx`: `systemctl status nginx`
+[Лог](vagrant_up.log) запуска ВМ (вывод сохранен утилитой script). 
+
+* Выполним вход: `vagrant ssh`, выполним вход `sudo -i`.
+
+* Проверим состояние сервиса `nginx`: `systemctl status nginx`
 
 ```bash
 [vagrant@selinux ~]$ sudo -i
@@ -63,9 +67,9 @@ Enforcing
 
 `setroubleshootd` — это системный демон, который запускается с привилегиями `root` и прослушивает события аудита, исходящие от ядра, связанные с `SELinux`. Демон аудита должен быть запущен. Демон аудита отправляет сообщение `dbus` демону `setroubleshootd`, когда система получает отказ `SELinux AVC`. Затем демон `setroubleshootd` запускает серию подключаемых модулей анализа, которые проверяют данные аудита, относящиеся к `AVC`. Он записывает результаты анализа и сообщает всем клиентам, которые присоединились к демону `setroubleshootd`, о появлении нового предупреждения.
 
-Выполним установку `setroubleshootd`: `yum install setroubleshoot-server -y`
+* Выполним установку `setroubleshootd`: `yum install setroubleshoot-server -y`
 
-Далее выполним команду `sealert -a /var/log/audit/audit.log` чтобы получить анализ лога `audit`:
+* Далее выполним команду `sealert -a /var/log/audit/audit.log` чтобы получить анализ лога `audit`:
 
 ```shell
 [root@selinux ~]# sealert -a /var/log/audit/audit.log 
@@ -145,9 +149,9 @@ Hash: nginx,httpd_t,unreserved_port_t,tcp_socket,name_bind
 
 Утилита `audit2why` обрабатывает сообщения аудита `SELinux`, принятые со стандартного ввода, и сообщает, какой компонент политики вызвал каждый из запретов. Если задана опция `-p`, то используется указанная этой опцией политика, в противном случае используется активная политика. Бывает три возможные причины: 1) отсутствует или отключено разрешительное `TE` правило (`TE allow rule`), 2) нарушение ограничения (`a constraint violation`) или 3) отсутствует разрешительное правило для роли (`role allow rule`). В первом случае разрешительное `TE` правило может присутствовать в политике, но было отключено через булевы переключатели. Смотрите [booleans(8)](https://www.opennet.ru/cgi-bin/opennet/man.cgi?topic=booleans&category=8). Если же разрешительного правила не было, то оно может быть создано при помощи утилиты [audit2allow(1)](README.md#audit2allow). Во втором случае могло произойти нарушение ограничения. Просмотрите `policy/constraints` или `policy/mls` для того, чтобы определить искомое ограничение. Обычно, проблема может быть решена добавлением атрибута типа к домену. В третьем случае была произведена попытка сменить роль, при том что не существует разрешительного правила для участвующей при этом пары ролей. Проблема может быть решена добавлением в политику разрешительного правила для этой пары ролей. ([источник](https://www.opennet.ru/man.shtml?topic=audit2why&category=8&russian=0))
 
-Если отсутствует, установим утилиту `audit2why`, которая находится в пакете `policycoreutils-python`: `yum install policycoreutils-python -y`
+* Если отсутствует, установим утилиту `audit2why`, которая находится в пакете `policycoreutils-python`: `yum install policycoreutils-python -y`
 
-Нам известен `PID` процесса `nginx` (`2830`), который вызвал ошибку и это действие было зафиксировано в логе сервиса `audit`, выполним команду: `ausearch -p 2830 | audit2why`:
+* Нам известен `PID` процесса `nginx` (`2830`), который вызвал ошибку и это действие было зафиксировано в логе сервиса `audit`, выполним команду: `ausearch -p 2830 | audit2why`:
 
 ![Screenshot_selinux1](https://raw.githubusercontent.com/mmmex/selinux/master/screenshots/screenshot_selinux1.png)
 
@@ -182,11 +186,11 @@ Dec 26 21:50:39 selinux nginx[21927]: nginx: configuration file /etc/nginx/nginx
 Dec 26 21:50:39 selinux systemd[1]: Started The nginx HTTP and reverse proxy server.
 ```
 
-Открываем браузер и переходим по адресу: `http://127.0.0.1:4881`:
+* Открываем браузер и переходим по адресу: `http://127.0.0.1:4881`:
 
 ![Screenshot_selinux2](https://raw.githubusercontent.com/mmmex/selinux/master/screenshots/screenshot_selinux2.png)
 
-Возвращаем обратно, отключаем `nis_enabled`: `setsebool -P nis_enabled off`
+* Возвращаем обратно, отключаем `nis_enabled`: `setsebool -P nis_enabled off`
 
 #### Способ 2: Разрешим в SELinux работу nginx на порту TCP 4881 с помощью добавления нестандартного порта в тип http_port_t (Модуль bind_ports предлагает (точность 92.2))
 
@@ -194,7 +198,7 @@ Dec 26 21:50:39 selinux systemd[1]: Started The nginx HTTP and reverse proxy ser
 
 `semanage` используется для настройки некоторых элементов политики `SELinux` без необходимости модификации или повторной компиляции исходного текста политики. В число таких настроек входит сопоставление имен пользователей `Linux` пользователям `SELinux` (которые контролируют исходный контекст безопасности, присваиваемый пользователям `Linux` во время их регистрации в системе, и ограничивают доступный набор ролей). Также в число настраиваемых элементов входит сопоставление контекстов безопасности для различных видов объектов, таких как: сетевые порты, интерфейсы, сетевые узлы (хосты), а также контексты файлов. Обратите внимание, что при вызове команды `semanage login` сопоставляются имена пользователей `Linux (logins)` пользователям `SELinux`. А при вызове команды `semanage user` сопоставляются пользователи `SELinux` доступному набору ролей. В большинстве случаев администратором выполняется настройка только первого типа сопоставлений. Второй тип сопоставлений как правило определяется базовой политикой и обычно не требует модификации. ([источник](https://www.opennet.ru/man.shtml?topic=semanage&category=8&russian=0))
 
-Просмотрим имеющиеся типы `http`:
+* Просмотрим имеющиеся типы `http`: `semanage port -l | grep http`
 
 ```bash
 [root@selinux ~]# semanage port -l | grep http
@@ -205,7 +209,7 @@ pegasus_http_port_t            tcp      5988
 pegasus_https_port_t           tcp      5989
 ```
 
-Добавим порт в тип `http_port_t`: `semanage port -a -t http_port_t -p tcp 4881` и выполним запуск сервиса `nginx`.
+* Добавим порт в тип `http_port_t`: `semanage port -a -t http_port_t -p tcp 4881` и выполним запуск сервиса `nginx`.
 
 ```bash
 [root@selinux ~]# semanage port -a -t http_port_t -p tcp 4881
@@ -235,7 +239,7 @@ Dec 26 22:16:10 selinux nginx[22013]: nginx: configuration file /etc/nginx/nginx
 Dec 26 22:16:10 selinux systemd[1]: Started The nginx HTTP and reverse proxy server.
 ```
 
-Удаляем нестандартный порт из типа http_port_t: `semanage port -d -t http_port_t -p tcp 4881`
+* Удаляем нестандартный порт из типа http_port_t: `semanage port -d -t http_port_t -p tcp 4881`
 
 #### Способ 3: Разрешим в SELinux работу nginx на порту TCP 4881 с помощью формирования и установки модуля SELinux (Модуль catchall предлагает (точность 1.41))
 
@@ -243,7 +247,7 @@ Dec 26 22:16:10 selinux systemd[1]: Started The nginx HTTP and reverse proxy ser
 
 `audit2allow` - создает разрешающие правила политики `SELinux` из файлов журналов, содержащих сообщения о запрете операций. Утилита сканирует журналы в поиске сообщений, появляющихся когда система не дает разрешения на операцию. Далее утилита генерирует ряд правил, которые, будучи загруженными в политику, могли бы разрешить эти операции. Однако, данная утилита генерирует только разрешающие правила `Type Enforcement (TE)`. Некоторые отказы в использовании разрешений могут потребовать других изменений политики. Например, добавление атрибута в определение типа, для разрешения существующего ограничения `(constraint)`, добавления разрешающего правила для роли или модификации ограничения `(constraint)`. В случае сомнений для диагностики можно попробовать использовать утилиту [audit2why(8)](README.md#audit2why). Следует с осторожностью работать с выводом данной утилиты, убедившись, что разрешаемые операции не представляют угрозы безопасности. Обычно бывает лучше определить новый домен и/или тип или произвести другие структурные изменения. Лучше избирательно разрешить оптимальный набор операций вместо того, чтобы вслепую применить иногда слишком широкие разрешения, рекомендованные этой утилитой. Некоторые запреты на использование разрешений бывают не принципиальны для приложения. В таких случаях вместо использования разрешительного правила `('allow' rule)` лучше просто подавить журналирование этих запретов при помощи правила `dontaudit`. ([источник](https://www.opennet.ru/man.shtml?topic=audit2allow&category=1&russian=0))
 
-Попробуем заново запустить сервис `nginx`:
+* Попробуем заново запустить сервис `nginx`:
 
 ```bash
 [root@selinux ~]# systemctl start nginx
@@ -267,7 +271,7 @@ Dec 26 22:25:16 selinux systemd[1]: Unit nginx.service entered failed state.
 Dec 26 22:25:16 selinux systemd[1]: nginx.service failed.
 ```
 
-Сборка модуля `SELinux` осуществляется при помощи утилиты `audit2allow`:
+* Сборка модуля `SELinux` осуществляется при помощи утилиты `audit2allow`: `ausearch -p 22083 | audit2allow -M nginx`
 
 ```bash
 [root@selinux ~]# ausearch -p 22083 | audit2allow -M nginx
@@ -281,13 +285,13 @@ semodule -i nginx.pp
 -rw-r--r--.  1 root root  257 Dec 26 22:28 nginx.te
 ```
 
-После выполнения `audit2allow` создаст два файла в текущей папке (root): `nginx.pp` и `nginx.te`
+После выполнения `audit2allow` создаст два файла в текущей папке (root) `nginx.pp` и `nginx.te`:
 
-* nginx.pp - готовый к установке скомпилированный модуль;
+**nginx.pp** - готовый к установке скомпилированный модуль;
 
-* nginx.te - исходный код модуля, в который при необходимости можно внести свои правки;
+**nginx.te** - исходный код модуля, в который при необходимости можно внести свои правки;
 
-Установка модуля: `semodule -i nginx.pp`
+* Установка модуля: `semodule -i nginx.pp`
 
 ```bash
 [root@selinux ~]# semodule -i nginx.pp
@@ -310,7 +314,7 @@ Dec 26 22:37:34 selinux nginx[22125]: nginx: configuration file /etc/nginx/nginx
 Dec 26 22:37:34 selinux systemd[1]: Started The nginx HTTP and reverse proxy server.
 ```
 
-Для удаления модуля потребуется команда: `semodule -r nginx`
+* Для удаления модуля потребуется команда: `semodule -r nginx`
 
 ```bash
 [root@selinux ~]# semodule -r nginx
